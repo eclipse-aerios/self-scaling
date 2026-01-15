@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "db.name" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "db.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "db.name" . }}
+  {{- if not .Values.db.autoscaling.enabled }}
+  replicas: {{ .Values.db.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "db.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "db.selectorLabels" . | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: {{ .Values.db.name }}
+          securityContext:
+            {{- toYaml .Values.db.securityContext | nindent 12 }}
+          image: "{{ .Values.db.image.repository }}:{{ .Values.db.image.tag }}"
+          imagePullPolicy: {{ .Values.db.image.pullPolicy }}
+          ports:
+            - name: {{ .Values.db.name }}
+              containerPort: {{ .Values.db.service1.containerPort }}
+              protocol: {{ .Values.db.service1.protocol }}
+          resources:
+            {{- toYaml .Values.db.resources | nindent 12 }}
+          {{- with .Values.db.envVars }}
+          env:
+            - name: MYSQL_DATABASE
+              value: {{ .data | quote }}
+            - name: MYSQL_ROOT_PASSWORD
+              value: {{ .root | quote }}
+            - name: MYSQL_USER
+              value: {{ .hpauser | quote }}
+            - name: MYSQL_PASSWORD
+              value: {{ .hpapassword | quote }}
+          {{- end }}
+          volumeMounts:
+            - name: claim
+              mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+    - metadata:
+        name: claim
+      spec:
+        accessModes:
+        {{- range .Values.db.persistence.accessModes }}
+          - {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.db.persistence.size | quote }}

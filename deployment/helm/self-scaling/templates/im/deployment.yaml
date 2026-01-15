@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "im.name" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "im.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.im.autoscaling.enabled }}
+  replicas: {{ .Values.im.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "im.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "im.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.im.name }}
+          securityContext:
+            {{- toYaml .Values.im.securityContext | nindent 12 }}
+          image: "{{ .Values.im.image.repository }}:{{ .Values.im.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.im.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.im.service1.containerPort }}
+              protocol: {{ .Values.im.service1.protocol }}
+          resources:
+            {{- toYaml .Values.im.resources | nindent 12 }}
+          env:
+            {{- with .Values.db.envVars }}
+            - name: MYSQL_USER
+              value: {{ .hpauser | quote }} 
+            - name: MYSQL_PASSWORD
+              value: {{ .hpapassword | quote }}
+            - name: MYSQL_DATABASE
+              value: {{ .data | quote }}
+            {{- end }}
+            - name: MYSQL_HOST
+              value: {{ include "db.name" . }}
+            - name: MYSQL_PORT
+              value: {{ .Values.db.service1.containerPort | quote }}
+            - name: IM_PORT
+              value: {{ .Values.im.service1.containerPort | quote }}

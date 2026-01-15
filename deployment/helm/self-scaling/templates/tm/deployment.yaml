@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tm.name" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "tm.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.tm.autoscaling.enabled }}
+  replicas: {{ .Values.tm.replicaCount }}
+  {{- end }}
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "tm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "tm.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.tm.name }}
+          securityContext:
+            {{- toYaml .Values.tm.securityContext | nindent 12 }}
+          image: "{{ .Values.tm.image.repository }}:{{ .Values.tm.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.tm.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.tm.service1.containerPort }}
+              protocol: {{ .Values.tm.service1.protocol }}
+          resources:
+            {{- toYaml .Values.tm.resources | nindent 12 }}
+          env:
+            {{- with .Values.db.envVars }}
+            - name: MYSQL_USER
+              value: {{ .hpauser | quote }}
+            - name: MYSQL_PASSWORD
+              value: {{ .hpapassword | quote }}
+            - name: MYSQL_DATABASE
+              value: {{ .data | quote }}
+            {{- end }}
+            {{- with .Values.tm.envVars }}
+            - name: HISTORY_DATA
+              value: {{ .history_data | quote }}
+            - name: FUTURE_DATA
+              value: {{ .future_data | quote }}
+            {{- end }}
+            - name: MYSQL_HOST
+              value: {{ include "db.name" . }}
+            - name: MYSQL_PORT
+              value: {{ .Values.db.service1.containerPort | quote }}
+            - name: MYSQL_HOST
+              value: {{ include "db.name" . }}
+            - name: MYSQL_PORT
+              value: {{ .Values.db.service1.containerPort | quote }}
+            - name: TM_PORT
+              value: {{ .Values.tm.service1.containerPort | quote }}

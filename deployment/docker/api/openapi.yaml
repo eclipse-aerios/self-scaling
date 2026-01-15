@@ -1,0 +1,365 @@
+openapi: 3.0.2
+info:
+  version: '1.0.0'
+
+  title: Self-scaling OpenAPI
+
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+  x-logo:
+    url: 'https://redocly.github.io/openapi-template/logo.png'
+
+tags:
+  - name: Endpoints
+  
+paths:
+  ############################ Service management API'S #################################################
+  /v1/services:
+    post:
+      tags:
+        - Services management
+      summary: Update managed services and serviceComponents
+      description: Update `services` or `serviceserviceComponents` for each service to do the inference
+      operationId: postServices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/serviceComponents/schemas/Services'
+            example:
+              services:
+                - name: Self-scaling
+                  managed: true
+                  serviceComponents:
+                    - name: api
+                      managed: true
+                    - name: im
+                      managed: true
+                    - name: prc
+                      managed: false
+                    - name: tm
+                      managed: false
+        required: true
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: string
+                example: Services managed updates successfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                  - Invalid JSON
+                  - Managed services/serviceserviceComponents must be true or false
+        '406':
+          description: Content-Type not supported
+          content:
+            application/json:
+              schema:
+                type: string
+                example: Content-Type not supported!
+        '500':
+          description: Internal error
+          content: {}
+    get:
+          tags:
+            - Services management
+          summary: Return managed services and serviceComponents
+          description: |
+            Return `services` or `serviceComponents` for each service to do the inference
+          operationId: getServices
+          responses: # list of responses
+            '200':
+              description: Success
+              content:
+                application/json:
+                  schema:
+                      $ref: '#/serviceComponents/schemas/Services'
+                  example:
+                        Services:
+                          - name: Self-scaling
+                            managed: true
+                            serviceComponents:
+                              - name: api
+                                managed: true
+                              - name: im
+                                managed: true
+                              - name: prc
+                                managed: false
+                              - name: tm
+                                managed: false
+            '500':
+              description: Internal error
+              content: {}
+
+   ############################ Services management API'S #################################################
+  /v1/train-values:
+    post:
+      tags:
+        - Training
+      summary: Update train values
+      description: |
+        Update service's train values
+      operationId: postTrainValues
+      requestBody:
+        content:
+          application/json:
+            schema:
+                $ref: '#/serviceComponents/schemas/Train-values'
+            example: 
+              Future_data: "1"
+              History_data: "6"
+        required: true
+      responses: # list of responses
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: string
+                example: Train values changed
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                  - Invalid JSON
+                  - Values must be positive numbers
+        '406':
+          description: Content-Type not supported
+          content:
+            application/json:
+              schema:
+                type: string
+                example: Content-Type not supported!
+        '500':
+          description: Internal error
+          content: {}
+    get:
+      tags:
+        - Training
+      summary: Return train values
+      description: |
+        Return service's train values
+      operationId: getTrainValues
+      responses: # list of responses
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                  $ref: '#/serviceComponents/schemas/Train-values'
+              example:
+                Future_data: "1"
+                History_data: "6"
+        '500':
+          description: Internal error
+          content: {}
+  /v1/train:
+    get:
+      tags:
+        - Training
+      summary: Execute training
+      description: |
+        Execute training to get predicted data
+      operationId: getTrain
+      responses: # list of responses
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: string
+                example: Train module executed successfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                  - Not serviceComponents to train
+                  - Insufficient data
+        '500':
+          description: Internal error
+          content: {}
+      
+   ############################ Services inference API'S #################################################  
+  /v1/inference:
+    get:
+      tags:
+        - Inference
+      summary: Execute inference
+      description: |
+        Execute inference to apply predicted data
+      operationId: getInference
+      responses: # list of responses
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: string
+                example: Infence complete sucessfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                  - Error in execution Inference Module
+        '500':
+          description: Internal error
+          content: {}   
+   
+   ############################ Services management API'S #################################################
+  /version:
+    get:
+      tags:
+        - Common endpoints
+      summary: Get version
+      description: Get current service `version`
+      operationId: getVersion
+      responses: # list of responses
+            '200':
+              description: Success
+              content:
+                application/json:
+                  schema:
+                      $ref: '#/serviceComponents/schemas/Version'
+                  example:
+                    name: Self-scaling
+                    version: "1.0.0"
+            '500':
+              description: Internal error
+              content: {}
+              
+  /v1/health:
+    get:
+      tags:
+        - Common endpoints
+      summary: Get health status
+      description: Returns service's health status
+      operationId: getHealth
+      responses: # list of responses
+            '200':
+              description: Success
+              content:
+                application/json:
+                  schema:
+                      $ref: '#/serviceComponents/schemas/Health'
+                  example:
+                    status: healthy
+            '500':
+              description: Internal error
+              content: {}
+            '503':
+              description: Service unavailable
+              content:
+                application/json:
+                  schema:
+                      $ref: '#/serviceComponents/schemas/Health'
+                  example:
+                    status: unhealthy
+                    
+  /v1/api-export:
+    get:
+      tags:
+        - Common endpoints
+      summary: Get OpenAPI documentation
+      description: Returns service's OpenAPI documentation
+      operationId: getOpenAPI
+      responses: # list of responses
+            '200':
+              description: Success
+              content:
+                application/json:
+                  example:
+                    openapi: 3.0.2
+                    info:
+                      version: '2.0.0'
+                      title: Self-scaling OpenAPI
+                      license:
+                        name: Apache 2.0
+                        url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+                    ...: ...
+            '500':
+              description: Internal error
+              content: {}
+    
+######################### SCHEMAS ####################################################
+# An object to hold reusable parts that can be used across the definition
+serviceComponents:
+  schemas:
+    Component:
+      type: object
+      properties:
+        name:
+          description: Component's name
+          type: string
+          maxLength: 128
+        managed:
+          description: Component management status
+          type: boolean
+    service:
+      type: object
+      properties:
+        name:
+          description: service's name
+          type: string
+          maxLength: 128
+        managed:
+          description: service management status
+          type: boolean
+        serviceComponents:
+          description: Array of each service's component
+          type: array
+          items:
+            $ref: '#/serviceComponents/schemas/Component'
+    Services:
+      type: object
+      properties:
+        Services:
+          description: Array of each service available to infer in cluster
+          type: array
+          items:
+            $ref: '#/serviceComponents/schemas/service'
+    Version:
+      type: object
+      properties:
+        service:
+          description: service's name
+          type: string
+          maxLength: 128
+        version:
+          description: Current service's version
+          type: string
+          maxLength: 128
+    Health:
+      type: object
+      properties:
+        status:
+          description: Returns health status of service
+          type: string
+          maxLength: 128
+    Train-values:
+      type: object
+      properties:
+        Future_data:
+          description: Future data (in days) to train
+          type: string
+          maxLength: 128
+        History_data:
+          description: History data (in days) to get data to train
+          type: string
+          maxLength: 128

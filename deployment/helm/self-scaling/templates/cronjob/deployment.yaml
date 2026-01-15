@@ -1,0 +1,24 @@
+{{- range $job, $val := .Values.cronjob.crons }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "cronjob.name" $ }}-{{ .name }}
+spec:
+  schedule: {{ .schedule | quote}}
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 0
+      template:
+        spec:
+          containers:
+          - name: {{ .name }}
+            image: "{{ $.Values.cronjob.repository }}:{{ $.Values.cronjob.image.tag }}"
+            args:
+            - /bin/sh
+            - -ecs
+            - curl -X {{ .method}} http://{{ include "api.name" $ }}:{{ $.Values.api.service1.port }}/{{ .command}}
+          restartPolicy: Never
+---
+{{- end}}

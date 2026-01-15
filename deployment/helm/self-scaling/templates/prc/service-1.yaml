@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "prc.name" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "prc.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.prc.service1.type }}
+  ports:
+    - port: {{ .Values.prc.service1.port }}
+      targetPort: {{ .Values.prc.service1.targetPort }}
+      protocol: {{ .Values.prc.service1.protocol }}
+      {{- if and (or (eq .Values.prc.service1.type "NodePort") (eq .Values.prc.service1.type "LoadBalancer")) (not (empty .Values.prc.service1.nodePort)) }}
+      nodePort: {{ .Values.prc.service1.nodePort }}
+      {{ end }}
+  selector:
+    {{- include "prc.selectorLabels" . | nindent 4 }}

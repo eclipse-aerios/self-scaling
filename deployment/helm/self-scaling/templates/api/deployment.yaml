@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "api.name" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "api.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.api.autoscaling.enabled }}
+  replicas: {{ .Values.api.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "api.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+      - name: check-db-ready
+        image: "{{ .Values.db.image.repository }}:{{ .Values.db.image.tag }}"
+        command: ['sh', '-c',
+          'until mysql -u {{ .Values.db.envVars.hpauser }} --password={{ .Values.db.envVars.hpapassword }} -h {{ include "db.name" . }} -e "SHOW DATABASES"; 
+          do echo waiting for database; sleep 2; done;']
+      containers:
+        - name: {{ .Values.api.name }}
+          securityContext:
+            {{- toYaml .Values.api.securityContext | nindent 12 }}
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.api.service1.containerPort }}
+              protocol: {{ .Values.api.service1.protocol }}
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          env:
+            {{- with .Values.db.envVars }}
+            - name: MYSQL_USER
+              value: {{ .hpauser | quote }}
+            - name: MYSQL_PASSWORD
+              value: {{ .hpapassword | quote }}
+            - name: MYSQL_DATABASE
+              value: {{ .data | quote }}
+            {{- end }}
+            - name: API_PORT
+              value: {{ .Values.api.service1.containerPort | quote }}
+            - name: TM_HOST
+              value: {{ include "tm.name" . }}
+            - name: TM_PORT
+              value: {{ .Values.tm.service1.containerPort | quote }}
+            - name: IM_HOST
+              value: {{ include "im.name" . }}
+            - name: IM_PORT
+              value: {{ .Values.im.service1.containerPort | quote }}
+            - name: MYSQL_HOST
+              value: {{ include "db.name" . }}
+            - name: MYSQL_PORT
+              value: {{ .Values.db.service1.containerPort | quote }}
+            - name: SERVICE_NAME
+              value: {{ .Chart.Name }} 
+            - name: SERVICE_VERSION
+              value: {{ .Chart.Version | quote }}
+

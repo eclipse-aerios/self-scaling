@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "prc.name" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "prc.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.prc.autoscaling.enabled }}
+  replicas: {{ .Values.prc.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "prc.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "prc.selectorLabels" . | nindent 8 }}
+
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+      - name: check-db-ready
+        image: "{{ .Values.db.image.repository }}:{{ .Values.db.image.tag }}"
+        command: ['sh', '-c',
+          'until mysql -u {{ .Values.db.envVars.hpauser }} --password={{ .Values.db.envVars.hpapassword }} -h {{ include "db.name" . }} -e "SHOW DATABASES"; 
+          do echo waiting for database; sleep 2; done;']
+      - name: check-api-ready
+        image: "curlimages/curl:8.00.0"
+        command: ['sh', '-c',
+          'until curl -s http://{{ include "api.name" . }}:{{ .Values.api.service1.port }}/v1/version; 
+          do echo waiting for API; sleep 2; done;']
+      containers:
+        - name: {{ .Values.prc.name }}
+          securityContext:
+            {{- toYaml .Values.prc.securityContext | nindent 12 }}
+          image: "{{ .Values.prc.image.repository }}:{{ .Values.prc.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.prc.image.pullPolicy }}
+
+          ports:
+            - containerPort: {{ .Values.prc.service1.containerPort }}
+              protocol: {{ .Values.prc.service1.protocol }}
+          resources:
+            {{- toYaml .Values.prc.resources | nindent 12 }}
+          env:
+            {{- with .Values.db.envVars }}
+            - name: MYSQL_USER
+              value: {{ .hpauser | quote }}
+            - name: MYSQL_PASSWORD
+              value: {{ .hpapassword | quote }}
+            - name: MYSQL_DATABASE
+              value: {{ .data | quote }}
+            {{- end }}
+            - name: MYSQL_HOST
+              value: {{ include "db.name" . }}
+            - name: MYSQL_PORT
+              value: {{ .Values.db.service1.containerPort | quote }}

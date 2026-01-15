@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "api.name" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "api.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.api.service1.type }}
+  ports:
+    - port: {{ .Values.api.service1.port }}
+      targetPort: {{ .Values.api.service1.targetPort }}
+      protocol: {{ .Values.api.service1.protocol }}
+      {{- if and (or (eq .Values.api.service1.type "NodePort") (eq .Values.api.service1.type "LoadBalancer")) (not (empty .Values.api.service1.nodePort)) }}
+      nodePort: {{ .Values.api.service1.nodePort }}
+      {{ end }}
+  selector:
+    {{- include "api.selectorLabels" . | nindent 4 }}
