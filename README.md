@@ -11,7 +11,7 @@ aeriOS Self-Scaling service shall store time series with the usage metrics of th
 Place in architecture
 ---------------------
 
-![self-scaling-architecture](./images/self-scaling-architecture.png)
+![self-scaling-architecture](./docs/self-scaling-architecture.png)
 
 When the administrator user enables the aeriOS Self-Scaling controller service it automatically starts working. It accesses the metrics and stores them in its internal database, performs the deep learning process and infers to create the horizontal objects pod autoscalers dynamically. All this with pre-set values in the initial configuration.
 
